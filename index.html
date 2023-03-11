@@ -1,1 +1,89 @@
-<h1>hello</h1>
+<!DOCTYPE html>
+<html lang=en>
+<meta charset=UTF-8>
+<title>WebGL premultipliedAlpha quirk</title>
+
+<style>
+    body {
+        margin: 0;
+    }
+
+    .bg {
+        position: absolute;
+        background: url( "forest.jpg");
+        background-size: cover;
+        width: 800px;
+        height: 450px;
+    }
+
+    .fg {
+        position: absolute;
+        cursor: crosshair;
+    }
+
+    .info {
+        position: absolute;
+        background: dimgray;
+        color: white;
+        font: 1.5em monospace;
+        padding: .125em .25em;
+    }
+</style>
+
+<body>
+    <div class=bg></div>
+    <canvas class=fg></canvas>
+    <div class=info></div>
+
+<script>
+    let canvas = document.querySelector('canvas.fg');
+    canvas.width = 800;
+    canvas.height = 450;
+
+    let gl = canvas.getContext('webgl', {
+        premultipliedAlpha: true,
+        preserveDrawingBuffer: true,
+    });
+
+    function fillRect({ rect, color }) {
+        gl.enable(gl.SCISSOR_TEST);
+        gl.scissor(...rect);
+        gl.clearColor(...color);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+    }
+
+    let numSteps = 10;
+    for (let i = 0; i < numSteps; ++i) {
+        let alpha = i / (numSteps - 1);
+        let dy = 200 / numSteps;
+        let y = 100 + i * dy;
+        let rgb = [1, .65, 0];  // orange
+        let rgbPremultiplied = rgb.map(x => alpha * x);
+
+        fillRect({
+            rect: [50, y, 200, dy],
+            color: [...rgbPremultiplied, alpha],
+        });
+
+        fillRect({
+            rect: [300, y, 200, dy],
+            color: [...rgbPremultiplied, 0],
+        });
+
+        fillRect({
+            rect: [550, y, 200, dy],
+            color: [...rgbPremultiplied, 1/255],
+        });
+    }
+
+    // show coord & rgba color under pointer
+    let info = document.querySelector('.info');
+    canvas.onpointermove = e => {
+        let [x, y] = [e.clientX, e.clientY];
+        y = canvas.height - y - 1;
+        let pixel = new Uint8Array(4);
+        gl.readPixels(x, y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
+        let [r, g, b, a] = pixel;
+        info.innerHTML = `x=${x} y=${y} | r=${r} g=${g} b=${b} a=${a}`;
+    };
+    </script>
